@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 
 from bd_pipeline import search
 from bd_pipeline.prompts import SEARCH_SYSTEM

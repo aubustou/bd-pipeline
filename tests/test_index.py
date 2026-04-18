@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import zipfile
 from pathlib import Path
 
@@ -52,8 +51,8 @@ def test_build_index_dedups_names_case_insensitively(tmp_path):
     _write_book(tmp_path, "Book2", characters=["tintin"])
     text = build_index(tmp_path).read_text(encoding="utf-8")
     # Both books are listed under a single Tintin entry.
-    lines = [l for l in text.splitlines() if "Tintin" in l or "tintin" in l]
-    name_lines = [l for l in lines if l.startswith("- **")]
+    lines = [line for line in text.splitlines() if "Tintin" in line or "tintin" in line]
+    name_lines = [line for line in lines if line.startswith("- **")]
     assert len(name_lines) == 1
     assert "Book1" in name_lines[0] and "Book2" in name_lines[0]
 
