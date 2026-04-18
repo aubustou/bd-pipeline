@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bd-pipeline"
+version = "0.1.0"
+description = "OCR + summarise + tag Franco-Belgian CBZ comic libraries using local Ollama models."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "bd-pipeline" }]
+dependencies = [
+    "ollama>=0.3",
+    "pillow>=10",
+    "pydantic>=2",
+    "typer>=0.12",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+bd-pipeline = "bd_pipeline.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["bd_pipeline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
