@@ -13,6 +13,7 @@ from tqdm import tqdm
 from bd_pipeline import cbz, ocr
 from bd_pipeline.index import build_index
 from bd_pipeline.pipeline import process_cbz, process_library
+from bd_pipeline.search import search_cbz, search_library
 
 app = typer.Typer(add_completion=False, help="OCR + analyse a CBZ library using local Ollama models.")
 
@@ -94,6 +95,28 @@ def ocr_cmd(
         typer.echo(f"--- PAGE {i} ({name}) ---")
         typer.echo(text or "(aucun texte)")
         typer.echo("")
+
+
+@app.command()
+def search(
+    query: str = typer.Argument(..., help="Visual subject to search for (e.g. 'staircase')."),
+    path: Path = typer.Argument(..., exists=True, readable=True, help="CBZ file or library folder."),
+    vlm: Optional[str] = typer.Option(None, help="Override the Ollama vision model."),
+) -> None:
+    """Search pages visually matching a subject across one CBZ or a library."""
+    vlm_client, _ = _make_clients()
+    model = vlm or ocr.default_vlm_model()
+    if path.is_file():
+        hits = search_cbz(path, query, client=vlm_client, model=model)
+        pages_str = ", ".join(str(p) for p in hits)
+        typer.echo(f"{path.stem} :: pages {pages_str}" if hits else f"{path.stem} :: aucun résultat")
+    else:
+        results = search_library(path, query, client=vlm_client, model=model)
+        if not results:
+            typer.echo("Aucun résultat.")
+        else:
+            for title, pages in sorted(results.items()):
+                typer.echo(f"{title} :: pages {', '.join(str(p) for p in pages)}")
 
 
 def main() -> None:  # pragma: no cover - thin wrapper
