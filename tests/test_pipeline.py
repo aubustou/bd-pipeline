@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -27,7 +25,7 @@ def _fresh_client():
 def test_process_cbz_writes_sidecar_and_comicinfo(make_cbz):
     path = make_cbz(pages=3)
     client = _fresh_client()
-    analysis = process_cbz(path, vlm_client=client, llm_client=client)
+    process_cbz(path, vlm_client=client, llm_client=client)
 
     sidecar = path.with_suffix(".json")
     assert sidecar.exists()

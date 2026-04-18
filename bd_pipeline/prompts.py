@@ -53,3 +53,16 @@ def reduce_user_prompt(title: str, partials_json: str) -> str:
         f"{partials_json}\n\n"
         "Produis la fiche finale fusionnée."
     )
+
+
+SEARCH_SYSTEM = (
+    "Tu es un expert en analyse visuelle de bandes dessinées franco-belges. "
+    "On te montre une planche et on te pose une question sur son contenu visuel. "
+    "Réponds uniquement par « oui » si l'élément demandé est clairement visible sur la planche, "
+    "ou par « non » dans tous les autres cas. "
+    "Ne donne aucune explication, n'écris qu'un seul mot."
+)
+
+
+def search_user_prompt(query: str) -> str:
+    return f"Est-ce que cette planche représente ou contient : {query} ?"

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -91,3 +90,22 @@ def test_cli_ocr_prints_pages(runner, patch_clients, make_cbz):
 def test_cli_unknown_path_exits_nonzero(runner):
     result = runner.invoke(cli.app, ["process", "/does/not/exist.cbz"])
     assert result.exit_code != 0
+
+
+def test_cli_search_single_cbz_prints_hits(runner, make_cbz, monkeypatch):
+    path = make_cbz(name="Srch.cbz", pages=2)
+    fake = FakeOllamaClient(ocr_responses=["non", "oui"])
+    monkeypatch.setattr(cli, "_make_clients", lambda: (fake, fake))
+    result = runner.invoke(cli.app, ["search", "escalier", str(path)])
+    assert result.exit_code == 0, result.stdout
+    assert "Srch" in result.stdout
+    assert "2" in result.stdout
+
+
+def test_cli_search_no_hits_prints_message(runner, make_cbz, monkeypatch):
+    path = make_cbz(name="Srch.cbz", pages=1)
+    fake = FakeOllamaClient(ocr_responses=["non"])
+    monkeypatch.setattr(cli, "_make_clients", lambda: (fake, fake))
+    result = runner.invoke(cli.app, ["search", "dragon", str(path)])
+    assert result.exit_code == 0, result.stdout
+    assert "aucun résultat" in result.stdout
