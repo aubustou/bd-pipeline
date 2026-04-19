@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import IO, Optional
 
 import typer
 from tqdm import tqdm
@@ -90,18 +91,28 @@ def show(
 def ocr_cmd(
     cbz_path: Path = typer.Argument(..., exists=True, dir_okay=False),
     vlm: Optional[str] = typer.Option(None, help="Override the Ollama vision model."),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write OCR text to this file (UTF-8). Recommended on Windows to avoid shell encoding issues.",
+    ),
 ) -> None:
     """Debug: print per-page OCR text for a single CBZ."""
     vlm_client, _ = _make_clients()
     model = vlm or ocr.default_vlm_model()
-    for i, (name, image_bytes) in enumerate(cbz.iter_pages(cbz_path), start=1):
-        typer.echo(f"--- PAGE {i} ({name}) ---")
-        try:
-            text = ocr.ocr_page(image_bytes, client=vlm_client, model=model)
-            typer.echo(text or "(aucun texte)")
-        except Exception as exc:
-            typer.echo(f"[ERROR: {type(exc).__name__}: {exc}]", err=True)
-        typer.echo("")
+    with contextlib.ExitStack() as stack:
+        out: IO[str] = (
+            stack.enter_context(open(output, "w", encoding="utf-8")) if output else sys.stdout
+        )
+        for i, (name, image_bytes) in enumerate(cbz.iter_pages(cbz_path), start=1):
+            out.write(f"--- PAGE {i} ({name}) ---\n")
+            try:
+                text = ocr.ocr_page(image_bytes, client=vlm_client, model=model)
+                out.write((text or "(aucun texte)") + "\n")
+            except Exception as exc:
+                typer.echo(f"[ERROR: {type(exc).__name__}: {exc}]", err=True)
+            out.write("\n")
 
 
 @app.command()
