@@ -13,7 +13,7 @@ from bd_pipeline.prompts import (
     reduce_user_prompt,
 )
 
-DEFAULT_LLM_MODEL = "qwen2.5:7b-instruct"
+DEFAULT_LLM_MODEL = "qwen3.5:9b"
 # Rough cap on characters per map chunk. Avoids truly long contexts on small local models.
 MAP_CHUNK_CHARS = 12000
 

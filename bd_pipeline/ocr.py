@@ -9,7 +9,7 @@ from PIL import Image
 
 from bd_pipeline.prompts import OCR_SYSTEM, OCR_USER
 
-DEFAULT_VLM_MODEL = "qwen2.5vl:7b"
+DEFAULT_VLM_MODEL = "qwen3.5:9b"
 MAX_EDGE_PX = 1600
 
 
