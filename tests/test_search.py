@@ -10,6 +10,7 @@ from tests.conftest import FakeOllamaClient
 # search_page
 # ---------------------------------------------------------------------------
 
+
 def test_search_page_returns_true_on_oui(png_bytes, fake_client):
     fake_client.ocr_responses = ["oui"]
     assert search.search_page(png_bytes, "escalier", client=fake_client, model="m") is True
@@ -57,6 +58,7 @@ def test_search_page_downscales_large_images(png_bytes_large, fake_client):
 # search_cbz
 # ---------------------------------------------------------------------------
 
+
 def test_search_cbz_returns_matching_page_numbers(make_cbz, fake_client):
     path = make_cbz(pages=3)
     fake_client.ocr_responses = ["non", "oui", "non"]
@@ -88,6 +90,7 @@ def test_search_cbz_uses_default_model_when_none(make_cbz, fake_client, monkeypa
 # ---------------------------------------------------------------------------
 # search_library
 # ---------------------------------------------------------------------------
+
 
 def test_search_library_finds_hits_across_books(tmp_path, make_cbz):
     # iter_cbz yields files in alphabetical order: Asterix before Tintin

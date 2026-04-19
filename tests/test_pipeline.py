@@ -108,6 +108,7 @@ def test_process_cbz_corrupt_zip_raises(tmp_path):
     bogus.write_bytes(b"this is not a zip file")
     client = FakeOllamaClient()
     from bd_pipeline.pipeline import PipelineError
+
     with pytest.raises(PipelineError):
         process_cbz(bogus, vlm_client=client, llm_client=client)
     # No sidecar should have been written.

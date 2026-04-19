@@ -1,4 +1,5 @@
 """VLM-based OCR of comic pages via Ollama."""
+
 from __future__ import annotations
 
 import io
@@ -7,10 +8,10 @@ from typing import Protocol
 
 from PIL import Image
 
-from bd_pipeline.prompts import OCR_SYSTEM, OCR_USER
+from bd_pipeline.prompts import OCR_SYSTEM, OCR_USER, OCR_USER_RETRY
 
 DEFAULT_VLM_MODEL = "qwen3.5:9b"
-MAX_EDGE_PX = 1600
+MAX_EDGE_PX = 2048
 
 
 class OllamaChatClient(Protocol):
@@ -36,7 +37,7 @@ def _maybe_downscale(image_bytes: bytes) -> bytes:
     img = img.convert("RGB") if img.mode not in ("RGB", "L") else img
     resized = img.resize(new_size, Image.LANCZOS)
     buf = io.BytesIO()
-    resized.save(buf, format="JPEG", quality=88)
+    resized.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
 
 
@@ -49,18 +50,23 @@ def ocr_page(
     """Run OCR on a single page image. Returns extracted text (may be empty)."""
     model = model or default_vlm_model()
     payload = _maybe_downscale(image_bytes)
+    text = _call_vlm(client, model, payload, OCR_USER)
+    if not text:
+        text = _call_vlm(client, model, image_bytes, OCR_USER_RETRY)
+    return text
+
+
+def _call_vlm(client: OllamaChatClient, model: str, payload: bytes, user_msg: str) -> str:
     resp = client.chat(
         model=model,
         messages=[
             {"role": "system", "content": OCR_SYSTEM},
-            {"role": "user", "content": OCR_USER, "images": [payload]},
+            {"role": "user", "content": user_msg, "images": [payload]},
         ],
         options={"temperature": 0},
     )
     text = _extract_content(resp).strip()
-    if text == "(aucun texte)":
-        return ""
-    return text
+    return "" if text == "(aucun texte)" else text
 
 
 def _extract_content(resp) -> str:

@@ -45,16 +45,21 @@ def test_cli_index_does_not_call_ollama(runner, patch_clients, make_cbz):
     path = make_cbz(name="X.cbz", pages=1)
     # Pre-create a sidecar so build_index has something to ingest.
     sidecar = path.with_suffix(".json")
-    sidecar.write_text(json.dumps({
-        "title": "X",
-        "path": str(path),
-        "page_count": 1,
-        "summary": "s",
-        "tags": ["t"],
-        "characters": [],
-        "locations": [],
-        "notable_people": [],
-    }), encoding="utf-8")
+    sidecar.write_text(
+        json.dumps(
+            {
+                "title": "X",
+                "path": str(path),
+                "page_count": 1,
+                "summary": "s",
+                "tags": ["t"],
+                "characters": [],
+                "locations": [],
+                "notable_people": [],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     patch_clients.calls.clear()
     result = runner.invoke(cli.app, ["index", str(path.parent)])

@@ -1,4 +1,5 @@
 """Text LLM analysis: summary, tags, and named-entity extraction via Ollama."""
+
 from __future__ import annotations
 
 import json
@@ -52,6 +53,7 @@ def _parse_json(text: str) -> dict:
 
 def _coerce_analysis(data: dict) -> dict:
     """Normalise the raw LLM dict into the shape expected by BookAnalysis."""
+
     def strlist(key: str) -> list[str]:
         val = data.get(key, [])
         if not isinstance(val, list):
@@ -75,9 +77,11 @@ def _coerce_analysis(data: dict) -> dict:
 
 
 def _fold(name: str) -> str:
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c)
-    ).lower().strip()
+    return (
+        "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
+        .lower()
+        .strip()
+    )
 
 
 def _merge_names(*lists: list[str]) -> list[str]:
@@ -196,12 +200,8 @@ def analyze_book(
     )
     merged = _coerce_analysis(reduced)
     # Defensive merge in case the reducer drops names the map step found.
-    merged["characters"] = _merge_names(
-        merged["characters"], *[p["characters"] for p in partials]
-    )
-    merged["locations"] = _merge_names(
-        merged["locations"], *[p["locations"] for p in partials]
-    )
+    merged["characters"] = _merge_names(merged["characters"], *[p["characters"] for p in partials])
+    merged["locations"] = _merge_names(merged["locations"], *[p["locations"] for p in partials])
     merged["notable_people"] = _merge_names(
         merged["notable_people"], *[p["notable_people"] for p in partials]
     )

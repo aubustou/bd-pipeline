@@ -1,4 +1,5 @@
 """Visual search across CBZ pages using a VLM."""
+
 from __future__ import annotations
 
 from pathlib import Path

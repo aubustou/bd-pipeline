@@ -14,9 +14,7 @@ def test_analyze_book_parses_response(fake_client):
         "locations": ["Bruxelles"],
         "notable_people": [],
     }
-    data = analyze.analyze_book(
-        "Tintin", ["bonjour"], client=fake_client, model="test-llm"
-    )
+    data = analyze.analyze_book("Tintin", ["bonjour"], client=fake_client, model="test-llm")
     assert data["summary"] == "Tintin part en voyage."
     # tags normalised to lowercase
     assert data["tags"] == ["aventure", "jeunesse"]
@@ -83,8 +81,11 @@ def test_analyze_book_map_reduce_merges_names(fake_client):
         },
     ]
     data = analyze.analyze_book(
-        "Long", ["a" * 200, "b" * 200, "c" * 200],
-        client=fake_client, model="m", map_chunk_chars=500,
+        "Long",
+        ["a" * 200, "b" * 200, "c" * 200],
+        client=fake_client,
+        model="m",
+        map_chunk_chars=500,
     )
     assert len(fake_client.calls) == 3  # 2 map + 1 reduce
     assert "Tintin" in data["characters"]
