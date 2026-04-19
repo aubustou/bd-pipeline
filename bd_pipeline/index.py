@@ -1,4 +1,5 @@
 """Aggregate per-book sidecar JSONs into a library-wide markdown index."""
+
 from __future__ import annotations
 
 import json
@@ -10,9 +11,11 @@ from bd_pipeline.models import BookAnalysis
 
 
 def _fold(name: str) -> str:
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c)
-    ).lower().strip()
+    return (
+        "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
+        .lower()
+        .strip()
+    )
 
 
 def _richer(a: str, b: str) -> bool:
@@ -51,10 +54,7 @@ def _collect_names(books: list[BookAnalysis], attr: str) -> dict[str, list[str]]
             if _richer(raw, entry["display"]):
                 entry["display"] = raw
             entry["books"].add(b.title)
-    return {
-        entry["display"]: sorted(entry["books"])
-        for entry in by_key.values()
-    }
+    return {entry["display"]: sorted(entry["books"]) for entry in by_key.values()}
 
 
 def _render_name_section(title: str, mapping: dict[str, list[str]]) -> list[str]:

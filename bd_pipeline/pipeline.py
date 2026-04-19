@@ -1,4 +1,5 @@
 """End-to-end orchestration: OCR + analyze + sidecar + ComicInfo + library index."""
+
 from __future__ import annotations
 
 import json
@@ -95,9 +96,7 @@ def process_cbz(
     pages = _ocr_all_pages(cbz_path, vlm_client=vlm_client, vlm_model=vlm_model)
     count = cbz.page_count(cbz_path)
 
-    raw = analyze.analyze_book(
-        cbz_path.stem, pages, client=llm_client, model=llm_model
-    )
+    raw = analyze.analyze_book(cbz_path.stem, pages, client=llm_client, model=llm_model)
     analysis = BookAnalysis(
         title=cbz_path.stem,
         path=str(cbz_path),

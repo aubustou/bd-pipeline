@@ -1,4 +1,5 @@
 """VLM-based OCR of comic pages via Ollama."""
+
 from __future__ import annotations
 
 import io

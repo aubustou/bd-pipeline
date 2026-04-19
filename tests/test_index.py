@@ -30,9 +30,7 @@ def _write_book(
         locations=list(locations),
         notable_people=list(notable_people),
     )
-    cbz_path.with_suffix(".json").write_text(
-        analysis.model_dump_json(indent=2), encoding="utf-8"
-    )
+    cbz_path.with_suffix(".json").write_text(analysis.model_dump_json(indent=2), encoding="utf-8")
 
 
 def test_build_index_lists_all_books(tmp_path):

@@ -1,4 +1,5 @@
 """CBZ (zip-of-images) read/write and ComicInfo.xml handling."""
+
 from __future__ import annotations
 
 import os
@@ -91,9 +92,10 @@ def write_comicinfo(cbz_path: Path, fields: dict[str, str]) -> None:
     os.close(tmp_fd)
     tmp_path = Path(tmp_name)
     try:
-        with zipfile.ZipFile(cbz_path, "r") as src, zipfile.ZipFile(
-            tmp_path, "w", zipfile.ZIP_DEFLATED
-        ) as dst:
+        with (
+            zipfile.ZipFile(cbz_path, "r") as src,
+            zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as dst,
+        ):
             written_comicinfo = False
             for item in src.infolist():
                 base = item.filename.rsplit("/", 1)[-1]
