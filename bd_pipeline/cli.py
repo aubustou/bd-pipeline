@@ -89,9 +89,12 @@ def ocr_cmd(
     vlm_client, _ = _make_clients()
     model = vlm or ocr.default_vlm_model()
     for i, (name, image_bytes) in enumerate(cbz.iter_pages(cbz_path), start=1):
-        text = ocr.ocr_page(image_bytes, client=vlm_client, model=model)
         typer.echo(f"--- PAGE {i} ({name}) ---")
-        typer.echo(text or "(aucun texte)")
+        try:
+            text = ocr.ocr_page(image_bytes, client=vlm_client, model=model)
+            typer.echo(text or "(aucun texte)")
+        except Exception as exc:
+            typer.echo(f"[ERROR: {type(exc).__name__}: {exc}]", err=True)
         typer.echo("")
 
 

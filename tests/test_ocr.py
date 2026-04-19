@@ -34,8 +34,36 @@ def test_ocr_page_downscales_large_images(png_bytes_large, fake_client):
     ocr.ocr_page(png_bytes_large, client=fake_client, model="m")
     sent = fake_client.calls[-1]["messages"][1]["images"][0]
     assert sent != png_bytes_large  # bytes were re-encoded
+    assert sent[:8] == b"\x89PNG\r\n\x1a\n"  # lossless PNG
     img = Image.open(io.BytesIO(sent))
     assert max(img.size) <= ocr.MAX_EDGE_PX
+    assert ocr.MAX_EDGE_PX == 2048
+
+
+def test_ocr_page_retries_on_empty(png_bytes, fake_client):
+    fake_client.ocr_responses = ["(aucun texte)", "Bonjour"]
+    text = ocr.ocr_page(png_bytes, client=fake_client, model="m")
+    assert text == "Bonjour"
+    assert len(fake_client.calls) == 2
+
+
+def test_ocr_page_retry_uses_original_bytes(png_bytes_large, fake_client):
+    fake_client.ocr_responses = ["(aucun texte)", "Réponse"]
+    ocr.ocr_page(png_bytes_large, client=fake_client, model="m")
+    retry_payload = fake_client.calls[1]["messages"][1]["images"][0]
+    assert retry_payload == png_bytes_large
+
+
+def test_ocr_page_no_retry_when_text_found(png_bytes, fake_client):
+    fake_client.ocr_responses = ["Tintin arrive !"]
+    ocr.ocr_page(png_bytes, client=fake_client, model="m")
+    assert len(fake_client.calls) == 1
+
+
+def test_ocr_page_empty_after_retry_returns_empty(png_bytes, fake_client):
+    fake_client.ocr_responses = ["(aucun texte)", "(aucun texte)"]
+    assert ocr.ocr_page(png_bytes, client=fake_client, model="m") == ""
+    assert len(fake_client.calls) == 2
 
 
 def test_default_vlm_model_env_override(monkeypatch):

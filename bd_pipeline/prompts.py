@@ -13,6 +13,12 @@ OCR_SYSTEM = (
 
 OCR_USER = "Transcris tout le texte visible de cette planche."
 
+OCR_USER_RETRY = (
+    "Cette planche contient probablement du texte (bulles, cartouches). "
+    "Relis attentivement et transcris tout ce qui est lisible. "
+    "Si elle est vraiment vide, réponds exactement par: (aucun texte)."
+)
+
 
 ANALYZE_SYSTEM = (
     "Tu es un bibliothécaire spécialisé dans la bande dessinée franco-belge. "
