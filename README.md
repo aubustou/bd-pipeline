@@ -13,12 +13,18 @@ transcribes pages and a text model produces the structured analysis.
 pip install -e ".[dev]"
 ```
 
-Pull the models (defaults can be overridden via env or CLI):
+Pull the model (defaults can be overridden via env or CLI):
 
 ```bash
-ollama pull qwen2.5vl:7b          # OCR / vision
-ollama pull qwen2.5:7b-instruct   # summary / tags / NER
+ollama pull qwen3.5:9b   # multimodal: OCR + summary / tags / NER
 ```
+
+Qwen 3.5 is multimodal, so a single pull covers both the VLM (page OCR) and
+LLM (analysis) roles. The 9B size targets a 12 GB GPU (e.g. RTX 5070); for
+tighter VRAM use `qwen3.5:4b`, for more headroom `qwen3.5:27b`. You can still
+split the two roles to different models via `BD_VLM_MODEL` / `BD_LLM_MODEL`
+or `--vlm` / `--llm` — the previous defaults (`qwen2.5vl:7b`,
+`qwen2.5:7b-instruct`) remain usable that way.
 
 ## Usage
 
