@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "bd-pipeline" }]
 dependencies = [
+    "chandra-ocr>=0.2",
     "ollama>=0.3",
     "pillow>=10",
     "pydantic>=2",

@@ -6,7 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from bd_pipeline import cli
-from tests.conftest import FakeOllamaClient
+from tests.conftest import FakeChandraClient, FakeOllamaClient
 
 
 @pytest.fixture
@@ -16,19 +16,20 @@ def runner() -> CliRunner:
 
 @pytest.fixture
 def patch_clients(monkeypatch):
-    """Replace the Ollama client factory with a fake one and expose it."""
-    fake = FakeOllamaClient(
-        ocr_responses=["page text 1", "page text 2", "page text 3"],
+    """Replace the client factories with fakes and expose them."""
+    fake_ocr = FakeChandraClient(["page text 1", "page text 2", "page text 3"])
+    fake_llm = FakeOllamaClient(
         analyze_response={
             "summary": "résumé CLI",
             "tags": ["test"],
             "characters": ["Tintin"],
             "locations": [],
             "notable_people": [],
-        },
+        }
     )
-    monkeypatch.setattr(cli, "_make_clients", lambda: (fake, fake))
-    return fake
+    monkeypatch.setattr(cli, "_make_ocr_client", lambda: fake_ocr)
+    monkeypatch.setattr(cli, "_make_llm_client", lambda: fake_llm)
+    return fake_ocr, fake_llm
 
 
 def test_cli_process_writes_sidecar(runner, patch_clients, make_cbz):
@@ -41,7 +42,7 @@ def test_cli_process_writes_sidecar(runner, patch_clients, make_cbz):
     assert data["summary"] == "résumé CLI"
 
 
-def test_cli_index_does_not_call_ollama(runner, patch_clients, make_cbz):
+def test_cli_index_does_not_call_models(runner, patch_clients, make_cbz):
     path = make_cbz(name="X.cbz", pages=1)
     # Pre-create a sidecar so build_index has something to ingest.
     sidecar = path.with_suffix(".json")
@@ -61,11 +62,12 @@ def test_cli_index_does_not_call_ollama(runner, patch_clients, make_cbz):
         encoding="utf-8",
     )
 
-    patch_clients.calls.clear()
+    fake_ocr, fake_llm = patch_clients
     result = runner.invoke(cli.app, ["index", str(path.parent)])
     assert result.exit_code == 0, result.stdout
     assert (path.parent / "INDEX.md").exists()
-    assert patch_clients.calls == []  # zero model calls
+    assert fake_ocr.calls == []
+    assert fake_llm.calls == []
 
 
 def test_cli_show_prints_sidecar(runner, make_cbz):
@@ -83,9 +85,10 @@ def test_cli_show_missing_sidecar_errors(runner, make_cbz):
     assert result.exit_code != 0
 
 
-def test_cli_ocr_prints_pages(runner, patch_clients, make_cbz):
+def test_cli_ocr_prints_pages(runner, monkeypatch, make_cbz):
     path = make_cbz(name="OCR.cbz", pages=2)
-    patch_clients.ocr_responses = ["alpha", "beta"]
+    fake_ocr = FakeChandraClient(["alpha", "beta"])
+    monkeypatch.setattr(cli, "_make_ocr_client", lambda: fake_ocr)
     result = runner.invoke(cli.app, ["ocr", str(path)])
     assert result.exit_code == 0, result.stdout
     assert "alpha" in result.stdout
@@ -99,8 +102,8 @@ def test_cli_unknown_path_exits_nonzero(runner):
 
 def test_cli_search_single_cbz_prints_hits(runner, make_cbz, monkeypatch):
     path = make_cbz(name="Srch.cbz", pages=2)
-    fake = FakeOllamaClient(ocr_responses=["non", "oui"])
-    monkeypatch.setattr(cli, "_make_clients", lambda: (fake, fake))
+    fake_vlm = FakeOllamaClient(ocr_responses=["non", "oui"])
+    monkeypatch.setattr(cli, "_make_vlm_client", lambda: fake_vlm)
     result = runner.invoke(cli.app, ["search", "escalier", str(path)])
     assert result.exit_code == 0, result.stdout
     assert "Srch" in result.stdout
@@ -109,8 +112,8 @@ def test_cli_search_single_cbz_prints_hits(runner, make_cbz, monkeypatch):
 
 def test_cli_search_no_hits_prints_message(runner, make_cbz, monkeypatch):
     path = make_cbz(name="Srch.cbz", pages=1)
-    fake = FakeOllamaClient(ocr_responses=["non"])
-    monkeypatch.setattr(cli, "_make_clients", lambda: (fake, fake))
+    fake_vlm = FakeOllamaClient(ocr_responses=["non"])
+    monkeypatch.setattr(cli, "_make_vlm_client", lambda: fake_vlm)
     result = runner.invoke(cli.app, ["search", "dragon", str(path)])
     assert result.exit_code == 0, result.stdout
     assert "aucun résultat" in result.stdout

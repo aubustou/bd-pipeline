@@ -60,14 +60,14 @@ def _save_page_cache(cbz_path: Path, pages: list[str]) -> None:
     (d / "pages.json").write_text(json.dumps(pages, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _ocr_all_pages(cbz_path: Path, *, vlm_client, vlm_model: str) -> list[str]:
+def _ocr_all_pages(cbz_path: Path, *, ocr_client) -> list[str]:
     cached = _load_page_cache(cbz_path)
     if cached is not None:
         return cached
     pages: list[str] = []
     try:
         for _, image_bytes in cbz.iter_pages(cbz_path):
-            pages.append(ocr.ocr_page(image_bytes, client=vlm_client, model=vlm_model))
+            pages.append(ocr.ocr_page(image_bytes, client=ocr_client))
     except Exception as exc:
         raise PipelineError(f"Failed to read pages from {cbz_path}: {exc}") from exc
     _save_page_cache(cbz_path, pages)
@@ -77,9 +77,8 @@ def _ocr_all_pages(cbz_path: Path, *, vlm_client, vlm_model: str) -> list[str]:
 def process_cbz(
     cbz_path: Path,
     *,
-    vlm_client,
+    ocr_client,
     llm_client,
-    vlm_model: Optional[str] = None,
     llm_model: Optional[str] = None,
     force: bool = False,
 ) -> BookAnalysis:
@@ -90,10 +89,9 @@ def process_cbz(
         if cached is not None:
             return cached
 
-    vlm_model = vlm_model or ocr.default_vlm_model()
     llm_model = llm_model or analyze.default_llm_model()
 
-    pages = _ocr_all_pages(cbz_path, vlm_client=vlm_client, vlm_model=vlm_model)
+    pages = _ocr_all_pages(cbz_path, ocr_client=ocr_client)
     count = cbz.page_count(cbz_path)
 
     raw = analyze.analyze_book(cbz_path.stem, pages, client=llm_client, model=llm_model)
@@ -106,7 +104,7 @@ def process_cbz(
         characters=raw["characters"],
         locations=raw["locations"],
         notable_people=raw["notable_people"],
-        vlm_model=vlm_model,
+        vlm_model="chandra-ocr-2",
         llm_model=llm_model,
     )
     _save_sidecar(analysis)
@@ -136,9 +134,8 @@ def iter_cbz(root: Path) -> Iterable[Path]:
 def process_library(
     root: Path,
     *,
-    vlm_client,
+    ocr_client,
     llm_client,
-    vlm_model: Optional[str] = None,
     llm_model: Optional[str] = None,
     force: bool = False,
     progress=None,
@@ -151,9 +148,8 @@ def process_library(
         results.append(
             process_cbz(
                 cbz_path,
-                vlm_client=vlm_client,
+                ocr_client=ocr_client,
                 llm_client=llm_client,
-                vlm_model=vlm_model,
                 llm_model=llm_model,
                 force=force,
             )
