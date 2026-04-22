@@ -44,10 +44,25 @@ def make_cbz(tmp_path: Path) -> Callable[..., Path]:
     return _factory
 
 
+class FakeChandraClient:
+    """Stand-in for `ChandraOCRClient` used in tests.
+
+    - `responses`: list of strings served in order per parse_image() call.
+    """
+
+    def __init__(self, responses: list[str] | None = None):
+        self.responses = list(responses or [])
+        self.calls: list[Image.Image] = []
+
+    def parse_image(self, image: Image.Image, **kwargs) -> dict:
+        self.calls.append(image)
+        text = self.responses.pop(0) if self.responses else ""
+        return {"md_content": text}
+
+
 class FakeOllamaClient:
     """Stand-in for `ollama.Client` used in tests.
 
-    - `ocr_responses`: list of strings, served in order per chat() call.
     - `analyze_response`: dict returned (as JSON) whenever format='json' is set.
     """
 
@@ -76,12 +91,17 @@ class FakeOllamaClient:
             else:
                 payload = self.analyze_response
             return {"message": {"content": json.dumps(payload, ensure_ascii=False)}}
-        # OCR path.
+        # VLM/search path.
         if self.ocr_responses:
             text = self.ocr_responses.pop(0)
         else:
             text = ""
         return {"message": {"content": text}}
+
+
+@pytest.fixture
+def fake_ocr_client() -> FakeChandraClient:
+    return FakeChandraClient()
 
 
 @pytest.fixture

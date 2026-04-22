@@ -12,21 +12,35 @@ from tqdm import tqdm
 from bd_pipeline import cbz, ocr
 from bd_pipeline.index import build_index
 from bd_pipeline.pipeline import process_cbz, process_library
-from bd_pipeline.search import search_cbz, search_library
+from bd_pipeline.search import default_vlm_model, search_cbz, search_library
 
-app = typer.Typer(
-    add_completion=False, help="OCR + analyse a CBZ library using local Ollama models."
-)
+app = typer.Typer(add_completion=False, help="OCR + analyse a CBZ library using local models.")
 
 
-def _make_clients():
-    """Lazily import ollama so the CLI help/tests don't require the server."""
+def _make_ocr_client():
+    """Lazily create a ChandraOCR 2 client."""
+    from chandra import ChandraOCRClient
+
+    url = ocr.default_chandra_url()
+    return ChandraOCRClient(base_url=url)
+
+
+def _make_llm_client():
+    """Lazily create an Ollama client for LLM analysis."""
     import ollama
 
     host = os.environ.get("OLLAMA_HOST")
     kwargs = {"host": host} if host else {}
-    client = ollama.Client(**kwargs)
-    return client, client
+    return ollama.Client(**kwargs)
+
+
+def _make_vlm_client():
+    """Lazily create an Ollama client for VLM visual search."""
+    import ollama
+
+    host = os.environ.get("OLLAMA_HOST")
+    kwargs = {"host": host} if host else {}
+    return ollama.Client(**kwargs)
 
 
 @app.command()
@@ -35,17 +49,16 @@ def process(
         ..., exists=True, readable=True, help="CBZ file or library folder."
     ),
     force: bool = typer.Option(False, "--force", help="Reprocess even if a sidecar exists."),
-    vlm: Optional[str] = typer.Option(None, help="Override the Ollama vision model."),
     llm: Optional[str] = typer.Option(None, help="Override the Ollama text model."),
 ) -> None:
     """OCR + analyse one CBZ or all CBZs in a folder, and rebuild INDEX.md."""
-    vlm_client, llm_client = _make_clients()
+    ocr_client = _make_ocr_client()
+    llm_client = _make_llm_client()
     if path.is_file():
         analysis = process_cbz(
             path,
-            vlm_client=vlm_client,
+            ocr_client=ocr_client,
             llm_client=llm_client,
-            vlm_model=vlm,
             llm_model=llm,
             force=force,
         )
@@ -54,9 +67,8 @@ def process(
     else:
         process_library(
             path,
-            vlm_client=vlm_client,
+            ocr_client=ocr_client,
             llm_client=llm_client,
-            vlm_model=vlm,
             llm_model=llm,
             force=force,
             progress=lambda xs: tqdm(xs, desc="Albums", unit="cbz"),
@@ -88,15 +100,13 @@ def show(
 @app.command("ocr")
 def ocr_cmd(
     cbz_path: Path = typer.Argument(..., exists=True, dir_okay=False),
-    vlm: Optional[str] = typer.Option(None, help="Override the Ollama vision model."),
 ) -> None:
     """Debug: print per-page OCR text for a single CBZ."""
-    vlm_client, _ = _make_clients()
-    model = vlm or ocr.default_vlm_model()
+    ocr_client = _make_ocr_client()
     for i, (name, image_bytes) in enumerate(cbz.iter_pages(cbz_path), start=1):
         typer.echo(f"--- PAGE {i} ({name}) ---")
         try:
-            text = ocr.ocr_page(image_bytes, client=vlm_client, model=model)
+            text = ocr.ocr_page(image_bytes, client=ocr_client)
             typer.echo(text or "(aucun texte)")
         except Exception as exc:
             typer.echo(f"[ERROR: {type(exc).__name__}: {exc}]", err=True)
@@ -112,8 +122,8 @@ def search(
     vlm: Optional[str] = typer.Option(None, help="Override the Ollama vision model."),
 ) -> None:
     """Search pages visually matching a subject across one CBZ or a library."""
-    vlm_client, _ = _make_clients()
-    model = vlm or ocr.default_vlm_model()
+    vlm_client = _make_vlm_client()
+    model = vlm or default_vlm_model()
     if path.is_file():
         hits = search_cbz(path, query, client=vlm_client, model=model)
         pages_str = ", ".join(str(p) for p in hits)

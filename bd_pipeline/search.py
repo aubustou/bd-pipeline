@@ -2,12 +2,35 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from typing import Protocol
 
 from bd_pipeline import cbz
-from bd_pipeline.ocr import OllamaChatClient, _extract_content, _maybe_downscale, default_vlm_model
+from bd_pipeline.ocr import _maybe_downscale
 from bd_pipeline.pipeline import iter_cbz
 from bd_pipeline.prompts import SEARCH_SYSTEM, search_user_prompt
+
+DEFAULT_VLM_MODEL = "qwen3.5:9b"
+
+
+class OllamaChatClient(Protocol):
+    def chat(self, **kwargs): ...  # noqa: ANN003
+
+
+def default_vlm_model() -> str:
+    return os.environ.get("BD_VLM_MODEL", DEFAULT_VLM_MODEL)
+
+
+def _extract_content(resp) -> str:
+    """Ollama returns either a dict-like response or an object; handle both."""
+    if isinstance(resp, dict):
+        msg = resp.get("message") or {}
+        return msg.get("content", "") if isinstance(msg, dict) else str(msg)
+    msg = getattr(resp, "message", None)
+    if msg is None:
+        return ""
+    return getattr(msg, "content", "") or ""
 
 
 def search_page(image_bytes: bytes, query: str, *, client: OllamaChatClient, model: str) -> bool:

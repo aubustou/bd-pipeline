@@ -1,4 +1,4 @@
-"""VLM-based OCR of comic pages via Ollama."""
+"""ChandraOCR 2 page OCR for comic pages."""
 
 from __future__ import annotations
 
@@ -8,18 +8,16 @@ from typing import Protocol
 
 from PIL import Image
 
-from bd_pipeline.prompts import OCR_SYSTEM, OCR_USER, OCR_USER_RETRY
-
-DEFAULT_VLM_MODEL = "qwen3.5:9b"
 MAX_EDGE_PX = 2048
+DEFAULT_CHANDRA_URL = "http://localhost:8000"
 
 
-class OllamaChatClient(Protocol):
-    def chat(self, **kwargs): ...  # noqa: ANN003
+class ChandraClient(Protocol):
+    def parse_image(self, image: Image.Image, **kwargs) -> dict: ...
 
 
-def default_vlm_model() -> str:
-    return os.environ.get("BD_VLM_MODEL", DEFAULT_VLM_MODEL)
+def default_chandra_url() -> str:
+    return os.environ.get("BD_CHANDRA_URL", DEFAULT_CHANDRA_URL)
 
 
 def _maybe_downscale(image_bytes: bytes) -> bytes:
@@ -41,40 +39,9 @@ def _maybe_downscale(image_bytes: bytes) -> bytes:
     return buf.getvalue()
 
 
-def ocr_page(
-    image_bytes: bytes,
-    *,
-    client: OllamaChatClient,
-    model: str | None = None,
-) -> str:
-    """Run OCR on a single page image. Returns extracted text (may be empty)."""
-    model = model or default_vlm_model()
-    payload = _maybe_downscale(image_bytes)
-    text = _call_vlm(client, model, payload, OCR_USER)
-    if not text:
-        text = _call_vlm(client, model, image_bytes, OCR_USER_RETRY)
-    return text
-
-
-def _call_vlm(client: OllamaChatClient, model: str, payload: bytes, user_msg: str) -> str:
-    resp = client.chat(
-        model=model,
-        messages=[
-            {"role": "system", "content": OCR_SYSTEM},
-            {"role": "user", "content": user_msg, "images": [payload]},
-        ],
-        options={"temperature": 0},
-    )
-    text = _extract_content(resp).strip()
-    return "" if text == "(aucun texte)" else text
-
-
-def _extract_content(resp) -> str:
-    """Ollama returns either a dict-like response or an object; handle both."""
-    if isinstance(resp, dict):
-        msg = resp.get("message") or {}
-        return msg.get("content", "") if isinstance(msg, dict) else str(msg)
-    msg = getattr(resp, "message", None)
-    if msg is None:
-        return ""
-    return getattr(msg, "content", "") or ""
+def ocr_page(image_bytes: bytes, *, client: ChandraClient) -> str:
+    """Run OCR on a single page image via ChandraOCR 2. Returns extracted text."""
+    image_bytes = _maybe_downscale(image_bytes)
+    img = Image.open(io.BytesIO(image_bytes))
+    result = client.parse_image(img)
+    return result.get("md_content", "").strip()
